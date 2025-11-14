@@ -2,10 +2,13 @@
 // This replaces all Webflow interaction code with pure GSAP/JS equivalents
 // while preserving all functionality and adding performance optimizations
 
+// DEBUG MODE - Set to false in production
+const DEBUG_MODE = true;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize GSAP plugins
     if (typeof gsap === 'undefined') {
-        console.error('GSAP is not loaded. Please ensure GSAP libraries are loaded before this script.');
+        if (DEBUG_MODE) console.warn('GSAP is not loaded. Please ensure GSAP libraries are loaded before this script.');
         return;
     }
 
@@ -32,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
     requestAnimationFrame(handleScroll);
     
     // Initialize Lenis smooth scrolling with performance optimizations
-    function initSmoothScroll() {
+    function initScroll() {
         lenis = new Lenis({
             lerp: reducedMotion ? 0.1 : 0.1,
             smoothWheel: true,
@@ -122,7 +125,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const cursorText = document.querySelector('.pointer-text');
         const cursorBg = document.querySelector('.bg-cursor');
         
-        if (!cursorCore || !cursor || !cursorText || !cursorBg) return;
+        if (!cursorCore || !cursor || !cursorText || !cursorBg) {
+            if (DEBUG_MODE) console.warn('Cursor elements not found');
+            return;
+        }
         
         // Set initial cursor position
         gsap.set(cursorCore, { xPercent: -50, yPercent: -50 });
@@ -159,6 +165,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Project card hover effects
         const projectCards = gsap.utils.toArray('[data-anim="cursor-grow"]');
+        
+        if (projectCards.length === 0) {
+            if (DEBUG_MODE) console.warn('No project cards found - check data-anim="cursor-grow" attributes');
+        }
+        
         projectCards.forEach(card => {
             card.addEventListener('mouseenter', () => {
                 gsap.to(cursor, { 
@@ -201,6 +212,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Special cursor effects for certain elements
         const invertElements = gsap.utils.toArray('[data-anim="cursor-invert"]');
+        
+        if (invertElements.length === 0) {
+            if (DEBUG_MODE) console.warn('No invert elements found - check data-anim="cursor-invert" attributes');
+        }
+        
         const trailWrap = document.querySelector('[data-anim="image-trail-wrap"]');
         
         invertElements.forEach(el => {
@@ -243,7 +259,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const closeButton = document.querySelector('[data-anim-nav="close"]');
         const links = gsap.utils.toArray('[data-anim-nav="link"]');
         
-        if (!menu || !openButton || !closeButton) return;
+        if (!menu || !openButton || !closeButton) {
+            if (DEBUG_MODE) console.warn('Navbar elements not found - check data-anim-nav attributes');
+            return;
+        }
         
         // Set initial menu state
         gsap.set(menu, { xPercent: 100, display: 'none' });
@@ -311,6 +330,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize hero section effects
     function initHeroSection() {
+        // Check for hero title element
+        const heroTitle = document.querySelector('[data-anim-load="hero-title"]');
+        if (!heroTitle) {
+            if (DEBUG_MODE) console.warn('Hero title not found - check data-anim-load attributes');
+            return;
+        }
+        
         // Hero text entrance animation
         gsap.set('[data-anim-load="hero-title"]', {
             scale: 2,
@@ -341,7 +367,14 @@ document.addEventListener('DOMContentLoaded', function() {
             duration: reducedMotion ? 0 : 1.0
         }, '-=0.5');
         
-        loadTl.fromTo('[data-anim="image-trail-wrap"]', 
+        // Check for image trail wrapper
+        const wrapper = document.querySelector('[data-anim="image-trail-wrap"]');
+        if (!wrapper) {
+            if (DEBUG_MODE) console.warn('Image trail wrapper not found - check data-anim attribute');
+            return;
+        }
+        
+        loadTl.fromTo(wrapper, 
             { 
                 display: 'none', 
                 opacity: 0 
@@ -354,90 +387,87 @@ document.addEventListener('DOMContentLoaded', function() {
         );
         
         // Hero image trail effect with mouse and touch support
-        const wrapper = document.querySelector('[data-anim="image-trail-wrap"]');
-        if (wrapper) {
-            const images = gsap.utils.toArray('.content-img-wrap');
-            let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-            let cache = { x: mouse.x, y: mouse.y };
-            let index = 0;
-            let threshold = 80;
-            let activeImages = 0;
-            let idle = true;
+        const images = gsap.utils.toArray('.content-img-wrap');
+        let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        let cache = { x: mouse.x, y: mouse.y };
+        let index = 0;
+        let threshold = 80;
+        let activeImages = 0;
+        let idle = true;
+        
+        // Mouse movement tracking
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+        
+        // Touch support
+        window.addEventListener('touchstart', e => {
+            const touch = e.touches[0];
+            mouse.x = touch.clientX;
+            mouse.y = touch.clientY;
+            showNextImage();
+        }, { passive: true });
+        
+        window.addEventListener('touchmove', e => {
+            const touch = e.touches[0];
+            mouse.x = touch.clientX;
+            mouse.y = touch.clientY;
+        }, { passive: true });
+        
+        // GSAP ticker for smooth animation
+        gsap.ticker.add(() => {
+            cache.x = gsap.utils.interpolate(cache.x, mouse.x, 0.1);
+            cache.y = gsap.utils.interpolate(cache.y, mouse.y, 0.1);
             
-            // Mouse movement tracking
-            window.addEventListener('mousemove', e => {
-                mouse.x = e.clientX;
-                mouse.y = e.clientY;
-            });
-            
-            // Touch support
-            window.addEventListener('touchstart', e => {
-                const touch = e.touches[0];
-                mouse.x = touch.clientX;
-                mouse.y = touch.clientY;
+            const dist = Math.hypot(mouse.x - cache.x, mouse.y - cache.y);
+            if (dist > threshold) {
                 showNextImage();
-            }, { passive: true });
+                cache.x = mouse.x;
+                cache.y = mouse.y;
+            }
+        });
+        
+        function showNextImage() {
+            if (reducedMotion) return;
             
-            window.addEventListener('touchmove', e => {
-                const touch = e.touches[0];
-                mouse.x = touch.clientX;
-                mouse.y = touch.clientY;
-            }, { passive: true });
+            index++;
+            const img = images[index % images.length];
+            const rect = img.getBoundingClientRect();
             
-            // GSAP ticker for smooth animation
-            gsap.ticker.add(() => {
-                cache.x = gsap.utils.interpolate(cache.x, mouse.x, 0.1);
-                cache.y = gsap.utils.interpolate(cache.y, mouse.y, 0.1);
-                
-                const dist = Math.hypot(mouse.x - cache.x, mouse.y - cache.y);
-                if (dist > threshold) {
-                    showNextImage();
-                    cache.x = mouse.x;
-                    cache.y = mouse.y;
-                }
+            gsap.killTweensOf(img);
+            gsap.set(img, {
+                opacity: 0,
+                scale: 0,
+                zIndex: index,
+                x: cache.x - rect.width / 2,
+                y: cache.y - rect.height / 2
             });
             
-            function showNextImage() {
-                if (reducedMotion) return;
-                
-                index++;
-                const img = images[index % images.length];
-                const rect = img.getBoundingClientRect();
-                
-                gsap.killTweensOf(img);
-                gsap.set(img, {
-                    opacity: 0,
-                    scale: 0,
-                    zIndex: index,
-                    x: cache.x - rect.width / 2,
-                    y: cache.y - rect.height / 2
-                });
-                
-                // Image trail animation
-                gsap.timeline({
-                    onStart: () => { activeImages++; idle = false; },
-                    onComplete: () => {
-                        activeImages--;
-                        if (activeImages === 0) idle = true;
-                    }
-                })
-                .to(img, {
-                    duration: 0.4,
-                    opacity: 1,
-                    scale: 1,
-                    x: mouse.x - rect.width / 2,
-                    y: mouse.y - rect.height / 2,
-                    ease: 'power2.out'
-                })
-                .to(img, {
-                    duration: 0.8,
-                    opacity: 0,
-                    scale: 0.2,
-                    ease: 'power2.in',
-                    x: cache.x - rect.width / 2,
-                    y: cache.y - rect.height / 2
-                }, '+=0.3');
-            }
+            // Image trail animation
+            gsap.timeline({
+                onStart: () => { activeImages++; idle = false; },
+                onComplete: () => {
+                    activeImages--;
+                    if (activeImages === 0) idle = true;
+                }
+            })
+            .to(img, {
+                duration: 0.4,
+                opacity: 1,
+                scale: 1,
+                x: mouse.x - rect.width / 2,
+                y: mouse.y - rect.height / 2,
+                ease: 'power2.out'
+            })
+            .to(img, {
+                duration: 0.8,
+                opacity: 0,
+                scale: 0.2,
+                ease: 'power2.in',
+                x: cache.x - rect.width / 2,
+                y: cache.y - rect.height / 2
+            }, '+=0.3');
         }
     }
     
@@ -480,6 +510,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize accordions
     function initAccordions() {
         const accordions = gsap.utils.toArray('[data-anim-accordion="item"]');
+        
+        if (accordions.length === 0) {
+            if (DEBUG_MODE) console.warn('No accordions found - check data-anim-accordion attributes');
+        }
+        
         accordions.forEach((item, index) => {
             const header = item.querySelector('[data-anim-accordion="header"]');
             const content = item.querySelector('[data-anim-accordion="content"]');
@@ -644,8 +679,8 @@ document.addEventListener('DOMContentLoaded', function() {
         resetFilterAttrs();
         
         // Desktop hover glitch effect
-        gsap.utils.toArray('[data-anim="cursor-glitch"]').forEach(card => {
-            const cursor = document.querySelector('.cursor-pointer');
+        const cursor = document.querySelector('.cursor-pointer');
+        gsap.utils.toArray('[data-anim="cursor-grow"]').forEach(card => {
             if (!cursor) return;
             
             card.addEventListener('mouseenter', () => {
@@ -688,8 +723,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .to('#glitchRGB', { attr: { dx: 0 }, duration: reducedMotion ? 0 : 0.25 }, '<');
             
             function playMobileGlitch(el) {
+                if (reducedMotion) return;
                 el.style.filter = 'url(#cyberGlitch)';
-                if (!reducedMotion) mobileGlitchTL.restart(true);
+                mobileGlitchTL.restart(true);
                 gsap.delayedCall(mobileGlitchTL.duration(), () => {
                     el.style.filter = 'none';
                     resetFilterAttrs();
@@ -746,7 +782,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Start the animation system
     function startAnimations() {
-        initSmoothScroll();
+        initScroll();
         initAllAnimations();
         
         // Initial page visibility setup
@@ -762,6 +798,17 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Ensure everything is visible after all animations are set up
         gsap.set('[data-start="hidden"]', { autoAlpha: 1 });
+        
+        // Debug mode logging
+        if (DEBUG_MODE) {
+            console.log('Required data attributes check:');
+            console.log('- data-anim-nav:', document.querySelectorAll('[data-anim-nav]').length);
+            console.log('- data-anim="cursor-grow":', document.querySelectorAll('[data-anim="cursor-grow"]').length);
+            console.log('- data-anim-load:', document.querySelectorAll('[data-anim-load]').length);
+            console.log('- data-anim-parallax:', document.querySelectorAll('[data-anim-parallax]').length);
+            console.log('- data-anim-accordion:', document.querySelectorAll('[data-anim-accordion]').length);
+            console.log('- data-anim-marquee:', document.querySelectorAll('[data-anim-marquee]').length);
+        }
     }
     
     // Start animations when fonts are loaded
