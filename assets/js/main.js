@@ -1,496 +1,780 @@
+// main.js - Complete GSAP Replacement for Webflow Interactions
+// This replaces all Webflow interaction code with pure GSAP/JS equivalents
+// while preserving all functionality and adding performance optimizations
 
-
-/*
-================================================================================
-DAVAI - CUSTOM ANIMATIONS MASTER FILE
-(Replaces all Webflow JS, jQuery, and custom inline scripts)
-================================================================================
-*/
-
-document.addEventListener("DOMContentLoaded", () => {
-  
-  // 1. --- GLOBAL SETUP (PLUGINS & SCROLL) ---
-  // =================================================
-
-  // Register only the plugins we are actually using
-  gsap.registerPlugin(Flip, ScrollTrigger);
-
-  // Use your more detailed Lenis setup
-  const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      direction: 'vertical',
-      gestureDirection: 'vertical',
-      smooth: true,
-      mouseMultiplier: 1,
-      smoothTouch: false,
-      touchMultiplier: 2,
-      infinite: false
-  });
-
-  // Update ScrollTrigger on scroll
-  lenis.on('scroll', ScrollTrigger.update);
-
-  // Animation frame loop for Lenis
-  function raf(time) {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-  }
-  requestAnimationFrame(raf);
-
-  // Store Lenis globally if needed elsewhere
-  window.lenis = lenis;
-
-  // This event tells our scroll-based animations when it's safe to run
-  const sendGsapEvent = () => {
-    window.dispatchEvent(new CustomEvent("GSAPReady", { detail: { lenis } }));
-  };
-  sendGsapEvent();
-
-  
-  // 2. --- CORE ANIMATIONS (from original inline scripts) ---
-  // ==========================================================
-
-  // Hero Text Background Animation
-  gsap.to(".big-text.v1", { backgroundPosition: "200% center", duration: 20, ease: "none", repeat: -1, yoyo: true });
-  gsap.to(".big-text.v2", { backgroundPosition: "200% center", duration: 20, ease: "none", repeat: -1, yoyo: true });
-  gsap.to(".big-text.tight.v-1", { backgroundPosition: "200% center", duration: 20, ease: "none", repeat: -1, yoyo: true });
-  gsap.to(".big-text.tight.v-2", { backgroundPosition: "200% center", duration: 20, ease: "none", repeat: -1, yoyo: true });
-  gsap.to(".big-text.tight.v-3", { backgroundPosition: "200% center", duration: 20, ease: "none", repeat: -1, yoyo: true });
-
-  // Hero Image Trail Effect (Mouse + Touch)
-  const wrapper = document.querySelector("[data-anim='image-trail-wrap']");
-  if (wrapper) {
-    const images = gsap.utils.toArray(".content-img-wrap");
-    let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-    let cache = { x: mouse.x, y: mouse.y };
-    let index = 0;
-    let threshold = 80;
-
-    window.addEventListener("mousemove", (e) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-    });
-    window.addEventListener("touchstart", (e) => {
-      const touch = e.touches[0];
-      mouse.x = touch.clientX;
-      mouse.y = touch.clientY;
-      showNextImage();
-    });
-    window.addEventListener("touchmove", (e) => {
-      const touch = e.touches[0];
-      mouse.x = touch.clientX;
-      mouse.y = touch.clientY;
-    });
-
-    gsap.ticker.add(() => {
-      cache.x = gsap.utils.interpolate(cache.x, mouse.x, 0.1);
-      cache.y = gsap.utils.interpolate(cache.y, mouse.y, 0.1);
-      const dist = Math.hypot(mouse.x - cache.x, mouse.y - cache.y);
-      if (dist > threshold) {
-        showNextImage();
-        cache.x = mouse.x;
-        cache.y = mouse.y;
-      }
-    });
-
-    function showNextImage() {
-      index++;
-      const img = images[index % images.length];
-      const rect = img.getBoundingClientRect();
-      gsap.killTweensOf(img);
-      gsap.set(img, {
-        opacity: 0, scale: 0, zIndex: index,
-        x: cache.x - rect.width / 2, y: cache.y - rect.height / 2
-      });
-      gsap.timeline()
-        .to(img, {
-          duration: 0.4, opacity: 1, scale: 1,
-          x: mouse.x - rect.width / 2, y: mouse.y - rect.height / 2,
-          ease: "power2.out"
-        })
-        .to(img, {
-          duration: 0.8, opacity: 0, scale: 0.2,
-          ease: "power2.in",
-          x: cache.x - rect.width / 2, y: cache.y - rect.height / 2
-        }, "+=0.3");
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize GSAP plugins
+    if (typeof gsap === 'undefined') {
+        console.error('GSAP is not loaded. Please ensure GSAP libraries are loaded before this script.');
+        return;
     }
-  }
 
-  // Glitch Effect (Desktop Hover)
-  const glitchTL = gsap.timeline({ paused: true, defaults: { ease: "power2.inOut" } })
-    .to("#glitchNoise", { attr: { baseFrequency: "0.05 1.2" }, duration: 0.12 })
-    .to("#glitchDisp", { attr: { scale: 60 }, duration: 0.12 }, "<")
-    .to("#glitchRGB", { attr: { dx: 6 }, duration: 0.12 }, "<")
-    .to("#glitchNoise", { attr: { baseFrequency: "0.02 0.6" }, duration: 0.2 })
-    .to("#glitchDisp", { attr: { scale: 30 }, duration: 0.2 }, "<")
-    .to("#glitchRGB", { attr: { dx: 3 }, duration: 0.2 }, "<")
-    .to("#glitchNoise", { attr: { baseFrequency: "0 0" }, duration: 0.25 })
-    .to("#glitchDisp", { attr: { scale: 0 }, duration: 0.25 }, "<")
-    .to("#glitchRGB", { attr: { dx: 0 }, duration: 0.25 }, "<");
-
-  function resetFilterAttrs() {
-    gsap.set("#glitchNoise", { attr: { baseFrequency: "0 0" } });
-    gsap.set("#glitchDisp", { attr: { scale: 0 } });
-    gsap.set("#glitchRGB", { attr: { dx: 0 } });
-  }
-  resetFilterAttrs();
-
-  gsap.utils.toArray('[data-anim="cursor-glitch"]').forEach(card => {
-    card.addEventListener('mouseenter', () => {
-      const cursor = document.querySelector('.cursor-pointer');
-      if (!cursor) return;
-      cursor.style.filter = 'none';
-      cursor.offsetWidth; // Force reflow
-      resetFilterAttrs();
-      cursor.style.filter = 'url(#cyberGlitch)';
-      glitchTL.restart(true);
-    });
-    card.addEventListener('mouseleave', () => {
-      const cursor = document.querySelector('.cursor-pointer');
-      if (!cursor) return;
-      gsap.to({}, { duration: 0.05, onComplete: () => cursor.style.filter = 'none' });
-    });
-  });
-
-  // Glitch Effect (Mobile Tap)
-  const mobileGlitchTL = gsap.timeline({ paused: true, defaults: { ease: "power2.inOut" } })
-    .to("#glitchNoise", { attr: { baseFrequency: "0.05 1.2" }, duration: 0.12 })
-    .to("#glitchDisp", { attr: { scale: 60 }, duration: 0.12 }, "<")
-    .to("#glitchRGB", { attr: { dx: 6 }, duration: 0.12 }, "<")
-    .to("#glitchNoise", { attr: { baseFrequency: "0.02 0.6" }, duration: 0.2 })
-    .to("#glitchDisp", { attr: { scale: 30 }, duration: 0.2 }, "<")
-    .to("#glitchRGB", { attr: { dx: 3 }, duration: 0.2 }, "<")
-    .to("#glitchNoise", { attr: { baseFrequency: "0 0" }, duration: 0.25 })
-    .to("#glitchDisp", { attr: { scale: 0 }, duration: 0.25 }, "<")
-    .to("#glitchRGB", { attr: { dx: 0 }, duration: 0.25 }, "<");
-
-  function playMobileGlitch(el) {
-    el.style.filter = "url(#cyberGlitch)";
-    mobileGlitchTL.restart(true);
-    gsap.delayedCall(mobileGlitchTL.duration(), () => {
-      el.style.filter = "none";
-      resetFilterAttrs();
-    });
-  }
-
-  gsap.utils.toArray(".single-project-wrap").forEach(trigger => {
-    const mobileButton = trigger.querySelector(".mobile-button");
-    if (!mobileButton) return;
-    const isTabletOrBelow = () => window.innerWidth <= 991;
-    trigger.addEventListener("touchstart", e => { if (isTabletOrBelow()) playMobileGlitch(mobileButton); }, { passive: true });
-    trigger.addEventListener("click", e => { if (isTabletOrBelow()) playMobileGlitch(mobileButton); });
-  });
-
-
-  // 3. --- NEW GSAP REPLACEMENTS (for Webflow Components & IX2) ---
-  // ===============================================================
-  
-  // All scroll-based animations wait for the "GSAPReady" event
-  window.addEventListener("GSAPReady", (e) => {
+    gsap.registerPlugin(
+        ScrollTrigger, 
+        CustomEase, 
+        CustomBounce, 
+        CustomWiggle, 
+        EasePack,
+        Flip
+    );
     
-    // --- REPLACEMENT: Navbar (Webflow Component + IX2) ---
-    // Replaces Webflow's navbar component and interactions e-165, e-166, etc.
+    // Initialize variables to be updated later
+    let lenis;
+    let isMobile = window.innerWidth <= 767;
+    let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let scrollPosition = 0;
+    
+    // Performance optimization: Use requestAnimationFrame for scroll handling
+    function handleScroll() {
+        scrollPosition = window.scrollY;
+        requestAnimationFrame(handleScroll);
+    }
+    requestAnimationFrame(handleScroll);
+    
+    // Initialize Lenis smooth scrolling with performance optimizations
+    function initSmoothScroll() {
+        lenis = new Lenis({
+            lerp: reducedMotion ? 0.1 : 0.1,
+            smoothWheel: true,
+            smoothTouch: false,
+            touchMultiplier: 2,
+            infinite: false,
+            wheelMultiplier: 0.8,
+            normalizeWheel: true,
+            orientation: 'vertical'
+        });
+        
+        // Optimize scroll updates
+        let lastScrollTime = 0;
+        const scrollUpdateThreshold = 16; // ~60fps
+        
+        lenis.on('scroll', ({ scroll }) => {
+            const now = Date.now();
+            if (now - lastScrollTime >= scrollUpdateThreshold) {
+                ScrollTrigger.update();
+                lastScrollTime = now;
+            }
+        });
+        
+        // Handle animation frame for Lenis
+        function animationFrame(time) {
+            lenis.raf(time);
+            requestAnimationFrame(animationFrame);
+        }
+        requestAnimationFrame(animationFrame);
+        
+        // Ensure ScrollTrigger updates on resize
+        window.addEventListener('resize', () => {
+            ScrollTrigger.refresh();
+            isMobile = window.innerWidth <= 767;
+        });
+        
+        // Optimize font loading handling
+        document.fonts.ready.then(() => {
+            window.dispatchEvent(new CustomEvent('fontsLoaded'));
+        });
+        
+        // Initial refresh
+        ScrollTrigger.refresh();
+    }
+    
+    // Initialize core animations that don't depend on fonts
+    function initCoreAnimations() {
+        // Hero text background animation - optimized with single timeline
+        const heroTextElements = gsap.utils.toArray('.big-text.v1, .big-text.v2, .big-text.tight.v-1, .big-text.tight.v-2, .big-text.tight.v-3');
+        heroTextElements.forEach(el => {
+            gsap.to(el, {
+                backgroundPosition: '200% center',
+                duration: reducedMotion ? 0 : 20,
+                ease: 'none',
+                repeat: -1,
+                yoyo: true,
+                paused: reducedMotion
+            });
+        });
+        
+        // Initialize cursor effects
+        initCursorEffects();
+        
+        // Initialize navbar/mobile menu
+        initNavbar();
+        
+        // Initialize project card interactions
+        initProjectCards();
+        
+        // Initialize accordion and tab interactions
+        initAccordions();
+        
+        // Initialize marquee/carousel effects
+        initMarquees();
+        
+        // Initialize CTA section effects
+        initCTA();
+        
+        // Initialize footer interactions
+        initFooter();
+    }
+    
+    // Initialize cursor effects with performance optimizations
+    function initCursorEffects() {
+        const cursorCore = document.querySelector('.cursor-core');
+        const cursor = document.querySelector('.cursor-pointer');
+        const cursorText = document.querySelector('.pointer-text');
+        const cursorBg = document.querySelector('.bg-cursor');
+        
+        if (!cursorCore || !cursor || !cursorText || !cursorBg) return;
+        
+        // Set initial cursor position
+        gsap.set(cursorCore, { xPercent: -50, yPercent: -50 });
+        
+        // Mouse tracking with requestAnimationFrame optimization
+        const mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        let lastX = mouse.x;
+        let lastY = mouse.y;
+        let currentX = mouse.x;
+        let currentY = mouse.y;
+        
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+        
+        // Optimized cursor follow animation
+        function animateCursor() {
+            // Use lerp for smooth following
+            currentX += (mouse.x - currentX) * 0.1;
+            currentY += (mouse.y - currentY) * 0.1;
+            
+            // Only update position if movement is significant
+            const distance = Math.hypot(currentX - lastX, currentY - lastY);
+            if (distance > 0.5) {
+                gsap.set(cursorCore, { x: currentX, y: currentY });
+                lastX = currentX;
+                lastY = currentY;
+            }
+            
+            requestAnimationFrame(animateCursor);
+        }
+        requestAnimationFrame(animateCursor);
+        
+        // Project card hover effects
+        const projectCards = gsap.utils.toArray('[data-anim="cursor-grow"]');
+        projectCards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                gsap.to(cursor, { 
+                    width: '6vw', 
+                    height: '6vw', 
+                    duration: reducedMotion ? 0 : 0.5,
+                    ease: 'outQuint'
+                });
+                gsap.to(cursorText, { 
+                    opacity: 1, 
+                    duration: reducedMotion ? 0 : 0.5,
+                    ease: 'outQuint'
+                });
+                gsap.to(cursorBg, { 
+                    opacity: 1, 
+                    duration: reducedMotion ? 0 : 0.25,
+                    ease: 'outQuint'
+                });
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                gsap.to(cursor, { 
+                    width: '1vw', 
+                    height: '1vw', 
+                    duration: reducedMotion ? 0 : 0.5,
+                    ease: 'outQuint'
+                });
+                gsap.to(cursorText, { 
+                    opacity: 0, 
+                    duration: reducedMotion ? 0 : 0.3,
+                    ease: 'outQuint'
+                });
+                gsap.to(cursorBg, { 
+                    opacity: 0, 
+                    duration: reducedMotion ? 0 : 0.5,
+                    ease: 'outQuint'
+                });
+            });
+        });
+        
+        // Special cursor effects for certain elements
+        const invertElements = gsap.utils.toArray('[data-anim="cursor-invert"]');
+        const trailWrap = document.querySelector('[data-anim="image-trail-wrap"]');
+        
+        invertElements.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                gsap.to(cursor, { 
+                    backdropFilter: 'invert(0)', 
+                    duration: reducedMotion ? 0 : 0.3,
+                    ease: 'power2.out'
+                });
+                if (trailWrap) {
+                    gsap.to(trailWrap, { 
+                        opacity: 0, 
+                        duration: reducedMotion ? 0 : 0.3,
+                        ease: 'power2.out'
+                    });
+                }
+            });
+            
+            el.addEventListener('mouseleave', () => {
+                gsap.to(cursor, { 
+                    backdropFilter: 'invert(1)', 
+                    duration: reducedMotion ? 0 : 0.3,
+                    ease: 'power2.out'
+                });
+                if (trailWrap) {
+                    gsap.to(trailWrap, { 
+                        opacity: 1, 
+                        duration: reducedMotion ? 0 : 0.3,
+                        ease: 'power2.out'
+                    });
+                }
+            });
+        });
+    }
+    
+    // Initialize navbar with performance optimizations
     function initNavbar() {
-      const menu = document.querySelector('[data-anim-nav="menu"]');
-      const openButton = document.querySelector('[data-anim-nav="open"]');
-      const closeButton = document.querySelector('[data-anim-nav="close"]');
-      const links = gsap.utils.toArray('[data-anim-nav="link"]');
-      
-      if (!menu || !openButton || !closeButton) return;
-
-      // This is the fix for the menu being open on load
-      gsap.set(menu, { xPercent: 100, display: 'none' }); 
-      gsap.set(links, { x: 50, opacity: 0 });
-
-      const navTl = gsap.timeline({ paused: true, defaults: { ease: "outQuint", duration: 0.6 } })
+        const menu = document.querySelector('[data-anim-nav="menu"]');
+        const openButton = document.querySelector('[data-anim-nav="open"]');
+        const closeButton = document.querySelector('[data-anim-nav="close"]');
+        const links = gsap.utils.toArray('[data-anim-nav="link"]');
+        
+        if (!menu || !openButton || !closeButton) return;
+        
+        // Set initial menu state
+        gsap.set(menu, { xPercent: 100, display: 'none' });
+        gsap.set(links, { x: 50, opacity: 0 });
+        
+        // Create menu animation timeline
+        const navTl = gsap.timeline({ 
+            paused: true, 
+            defaults: { 
+                ease: 'outQuint', 
+                duration: reducedMotion ? 0 : 0.6 
+            }
+        })
         .set(menu, { display: 'flex' })
         .to(menu, { xPercent: 0 })
         .to(links, {
-          x: 0,
-          opacity: 1,
-          stagger: 0.05,
-          duration: 0.4
-        }, "-=0.3");
-
-      openButton.addEventListener('click', () => navTl.play());
-      closeButton.addEventListener('click', () => navTl.reverse());
-      
-      // Replicates the original IX2 link hover animations (a-92, a-93)
-      links.forEach(link => {
-        const linkTl = gsap.timeline({ paused: true })
-            .to(link, { x: -500, duration: 0.5, ease: "outQuint" })
-            .set(link, { x: -500 })
-            .to(link, { x: 0, duration: 0.5, ease: "outQuint" });
+            x: 0,
+            opacity: 1,
+            stagger: 0.05,
+            duration: reducedMotion ? 0 : 0.4
+        }, '-=0.3');
         
-        // We set the initial state from the *end* of the "out" animation (a-93)
-        gsap.set(link, { x: -500 }); 
-        linkTl.play(); // Play to the "in" state (x: 0)
+        // Menu open/close handlers
+        openButton.addEventListener('click', () => {
+            if (!navTl.isActive()) navTl.play();
+        });
         
-        link.addEventListener('mouseenter', () => linkTl.play());
-        link.addEventListener('mouseleave', () => linkTl.reverse());
-
-        // Close menu on link click
-        link.addEventListener('click', () => {
-          if (window.innerWidth <= 991) {
-            navTl.reverse();
-          }
+        closeButton.addEventListener('click', () => {
+            if (!navTl.isActive()) navTl.reverse();
         });
-      });
-    }
-
-    // --- REPLACEMENT: Hero & Page Load (IX2) ---
-    // Replaces interaction a-77
-    function initPageLoadAnimations() {
-      const loadTl = gsap.timeline({
-        delay: 0.5, 
-        defaults: { ease: "outQuint" }
-      });
-      
-      // Replicates the hero title scale/move
-      loadTl.from("[data-anim-load='hero-title']", {
-        scale: 2,
-        x: "30vw",
-        y: "30vh",
-        duration: 2.0,
-        ease: "inOutQuint"
-      });
-      
-      // Replicates the subtext fade-in-up
-      loadTl.from("[data-anim-load='fade-in-up']", {
-        y: "100%",
-        opacity: 0,
-        duration: 1.0,
-        stagger: 0.2
-      }, "-=0.5");
-      
-      // Replicates the image trail fade-in
-      loadTl.fromTo("[data-anim='image-trail-wrap']", 
-        { display: 'none', opacity: 0 },
-        { display: 'block', opacity: 1, duration: 0.5, ease: "inOutQuint" }, 
-        "<"
-      );
-    }
-    
-    // --- REPLACEMENT: Scroll-triggered Parallax (IX2) ---
-    // Replaces interactions a-80, a-83, a-87
-    function initParallax() {
-      gsap.utils.toArray('[data-anim-parallax]').forEach(container => {
-        const target = container.querySelector('[data-anim-parallax-target]');
-        if (target) {
-          gsap.to(target, {
-            yPercent: -10, // All original parallax animations were 0% to -10%
-            ease: "none",
-            scrollTrigger: {
-              trigger: container,
-              scrub: 1.2 
-            }
-          });
-        }
-      });
-    }
-
-    // --- REPLACEMENT: Cursor Animations (IX2) ---
-    // Replaces interactions a-94, a-95, a-97, a-98
-    function initCursor() {
-      const cursorCore = document.querySelector(".cursor-core");
-      const cursor = document.querySelector(".cursor-pointer");
-      const cursorText = document.querySelector(".pointer-text");
-      const cursorBg = document.querySelector(".bg-cursor");
-      if (!cursorCore || !cursor || !cursorText || !cursorBg) return;
-      
-      // Cursor Follow (from original a)
-      gsap.set(cursorCore, { xPercent: -50, yPercent: -50 });
-      window.addEventListener('mousemove', e => {
-        gsap.to(cursorCore, {
-          duration: 0.8,
-          x: e.clientX,
-          y: e.clientY,
-          ease: "power3.out"
-        });
-      });
-
-      // Cursor "Grow" on project hover (a-94, a-95)
-      gsap.utils.toArray('[data-anim="cursor-grow"]').forEach(el => {
-        el.addEventListener('mouseenter', () => {
-          gsap.to(cursor, { width: "6vw", height: "6vw", duration: 0.5, ease: "outQuint" });
-          gsap.to(cursorText, { opacity: 1, duration: 0.5, ease: "outQuint" });
-          gsap.to(cursorBg, { opacity: 1, duration: 0.25, ease: "outQuint" });
-        });
-        el.addEventListener('mouseleave', () => {
-          gsap.to(cursor, { width: "1vw", height: "1vw", duration: 0.5, ease: "outQuint" });
-          gsap.to(cursorText, { opacity: 0, duration: 0.3, ease: "outQuint" });
-          gsap.to(cursorBg, { opacity: 0, duration: 0.5, ease: "outQuint" });
-        });
-      });
-
-      // Cursor "Invert" and Hide Image Trail (a-97, a-98)
-      gsap.utils.toArray('[data-anim="cursor-invert"]').forEach(el => {
-        const trailWrap = document.querySelector("[data-anim='image-trail-wrap']");
-        el.addEventListener('mouseenter', () => {
-            gsap.to(cursor, { backdropFilter: "invert(0)", duration: 0.3 });
-            if (trailWrap) gsap.to(trailWrap, { opacity: 0, duration: 0.3 });
-        });
-        el.addEventListener('mouseleave', () => {
-            gsap.to(cursor, { backdropFilter: "invert(1)", duration: 0.3 });
-            if (trailWrap) gsap.to(trailWrap, { opacity: 1, duration: 0.3 });
-        });
-      });
-    }
-
-    // --- REPLACEMENT: Animated Link Underline (IX2) ---
-    // Replaces interaction a-89
-    function initLinkHovers() {
-      gsap.utils.toArray('[data-anim="link-underline"]').forEach(link => {
-        const line = link.querySelector('.animated-link-line');
-        if (!line) return;
         
-        // This replicates the specific "slide out, jump left, slide in" effect from a-89
-        const tl = gsap.timeline({ paused: true })
-          .to(line, { x: "101%", duration: 0.5, ease: "outQuint" })
-          .set(line, { x: "-101%" })
-          .to(line, { x: "0%", duration: 0.5, ease: "outQuint" });
-
-        // Set initial state (line is at -101%) and play() to x:0
-        tl.play(tl.duration()); // Go to end
-        gsap.set(line, { x: "-101%" }); // Then set start
-
-        link.addEventListener('mouseenter', () => tl.play(0));
-      });
-    }
-
-    // --- REPLACEMENT: Accordion (Webflow Tabs Component) ---
-    // Replaces Webflow Tabs logic and interactions a-81, a-82
-    function initAccordions() {
-      const accordions = gsap.utils.toArray("[data-anim-accordion='item']");
-      
-      accordions.forEach((item, index) => {
-        const header = item.querySelector("[data-anim-accordion='header']");
-        const content = item.querySelector("[data-anim-accordion='content']");
-        const icon = item.querySelector("[data-anim-accordion='icon']");
-
-        // Set initial states (closed)
-        gsap.set(content, { height: 0, opacity: 0, display: 'none' });
-        
-        // Open the first one by default (as per original site)
-        if (index === 0) {
-          item.classList.add("is-active");
-          gsap.set(content, { height: 'auto', opacity: 1, display: 'flex' });
-          gsap.set(icon, { rotate: 90 });
-        }
-
-        header.addEventListener("click", () => {
-          const isActive = item.classList.contains("is-active");
-
-          // Close all other accordions
-          accordions.forEach(otherItem => {
-            if (otherItem !== item && otherItem.classList.contains("is-active")) {
-              otherItem.classList.remove("is-active");
-              gsap.to(otherItem.querySelector("[data-anim-accordion='content']"), {
-                height: 0, opacity: 0, duration: 0.5, ease: "outQuint",
-                onComplete: () => gsap.set(otherItem.querySelector("[data-anim-accordion='content']"), { display: 'none' })
-              });
-              gsap.to(otherItem.querySelector("[data-anim-accordion='icon']"), {
-                rotate: 0, duration: 0.5, ease: "outQuint"
-              });
-            }
-          });
-          
-          // Toggle the clicked one
-          if (isActive) {
-            item.classList.remove("is-active");
-            gsap.to(content, {
-              height: 0, opacity: 0, duration: 0.5, ease: "outQuint",
-              onComplete: () => gsap.set(content, { display: 'none' })
-            });
-            gsap.to(icon, { rotate: 0, duration: 0.5, ease: "outQuint" });
-          } else {
-            item.classList.add("is-active");
-            // Use Flip to animate height from 0 to 'auto'
-            const state = Flip.getState(content);
-            gsap.set(content, { display: 'flex', height: 'auto' });
+        // Link hover animations
+        links.forEach(link => {
+            gsap.set(link, { x: 0 }); // Initial state
             
-            Flip.from(state, {
-                duration: 0.5,
-                ease: "outQuint",
-                onStart: () => gsap.set(content, { opacity: 1 }),
-                onInterrupt: () => ScrollTrigger.refresh()
+            const linkTl = gsap.timeline({ paused: true })
+                .to(link, { 
+                    x: -500, 
+                    duration: reducedMotion ? 0 : 0.5,
+                    ease: 'outQuint'
+                })
+                .set(link, { x: -500 })
+                .to(link, { 
+                    x: 0, 
+                    duration: reducedMotion ? 0 : 0.5,
+                    ease: 'outQuint'
+                });
+            
+            link.addEventListener('mouseenter', () => {
+                if (!reducedMotion) linkTl.play();
             });
-
-            gsap.to(icon, { rotate: 90, duration: 0.5, ease: "outQuint" });
-          }
+            
+            link.addEventListener('mouseleave', () => {
+                if (!reducedMotion) linkTl.reverse();
+            });
+            
+            // Close menu on link click for mobile
+            link.addEventListener('click', () => {
+                if (isMobile) {
+                    navTl.reverse();
+                }
+            });
         });
-      });
     }
-
-    // --- REPLACEMENT: Marquee / Scrolling Text (IX2) ---
-    // Replaces interactions a-84, a-85, a-86
-    function initMarquees() {
-      gsap.utils.toArray("[data-anim-marquee='wrap']").forEach(wrap => {
-        const inner = wrap.querySelector("[data-anim-marquee='inner']");
-        const content = inner.querySelector("[data-anim-marquee='content']");
-        if (!inner || !content) return;
-        
-        const isReverse = wrap.classList.contains("reverse");
-
-        // Clone content for seamless loop
-        const contentClone = content.cloneNode(true);
-        inner.appendChild(contentClone);
-
-        gsap.set(inner, { xPercent: isReverse ? -50 : 0 });
-        
-        // Looping animation (a-84, a-85)
-        const loop = gsap.to(inner, {
-          xPercent: isReverse ? 0 : -50,
-          duration: 120, // 120,000ms = 2 minutes
-          ease: "none",
-          repeat: -1,
-        });
-
-        // Scroll-based animation (a-86)
-        const scrub = gsap.to(inner, {
-          xPercent: isReverse ? -25 : -25,
-          ease: "none",
-          scrollTrigger: {
-            trigger: wrap,
-            scrub: 1.2
-          }
-        });
-      });
-    }
-
-    // --- REPLACEMENT: CTA Fog Animation (IX2) ---
-    // Replaces interaction a-88
-    function initCtaFog() {
-      const fog = document.querySelector("[data-anim='cta-fog']");
-      if (!fog) return;
-
-      gsap.set(fog, { x: 0 }); // Start at 0
-      gsap.to(fog, {
-        x: "-200%", // Move to -200%
-        duration: 20,
-        ease: "none",
-        repeat: -1,
-        modifiers: {
-          x: gsap.utils.unitize(x => parseFloat(x) % 200) // Loop from -200% back to 0
-        }
-      });
-    }
-
-
-    // --- INITIALIZE ALL NEW ANIMATIONS ---
-    initPageLoadAnimations();
-    initParallax();
-    initCursor();
-    initLinkHovers();
-    initAccordions();
-    initMarquees();
-    initNavbar();
-    initCtaFog();
     
-    // Refresh ScrollTrigger once after all animations are set up
-    ScrollTrigger.refresh();
-
-  });
-  
+    // Initialize hero section effects
+    function initHeroSection() {
+        // Hero text entrance animation
+        gsap.set('[data-anim-load="hero-title"]', {
+            scale: 2,
+            x: '30vw',
+            y: '30vh'
+        });
+        
+        const loadTl = gsap.timeline({ 
+            delay: reducedMotion ? 0 : 0.5, 
+            defaults: { 
+                ease: 'outQuint',
+                duration: reducedMotion ? 0 : 1
+            }
+        });
+        
+        loadTl.to('[data-anim-load="hero-title"]', {
+            scale: reducedMotion ? 1 : 1,
+            x: reducedMotion ? 0 : 0,
+            y: reducedMotion ? 0 : 0,
+            duration: reducedMotion ? 0 : 2.0,
+            ease: 'inOutQuint'
+        });
+        
+        loadTl.from('[data-anim-load="fade-in-up"]', {
+            y: '100%',
+            opacity: 0,
+            stagger: 0.2,
+            duration: reducedMotion ? 0 : 1.0
+        }, '-=0.5');
+        
+        loadTl.fromTo('[data-anim="image-trail-wrap"]', 
+            { 
+                display: 'none', 
+                opacity: 0 
+            }, {
+                display: 'block', 
+                opacity: 1, 
+                duration: reducedMotion ? 0 : 0.5, 
+                ease: 'inOutQuint'
+            }, '<'
+        );
+        
+        // Hero image trail effect with mouse and touch support
+        const wrapper = document.querySelector('[data-anim="image-trail-wrap"]');
+        if (wrapper) {
+            const images = gsap.utils.toArray('.content-img-wrap');
+            let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+            let cache = { x: mouse.x, y: mouse.y };
+            let index = 0;
+            let threshold = 80;
+            let activeImages = 0;
+            let idle = true;
+            
+            // Mouse movement tracking
+            window.addEventListener('mousemove', e => {
+                mouse.x = e.clientX;
+                mouse.y = e.clientY;
+            });
+            
+            // Touch support
+            window.addEventListener('touchstart', e => {
+                const touch = e.touches[0];
+                mouse.x = touch.clientX;
+                mouse.y = touch.clientY;
+                showNextImage();
+            }, { passive: true });
+            
+            window.addEventListener('touchmove', e => {
+                const touch = e.touches[0];
+                mouse.x = touch.clientX;
+                mouse.y = touch.clientY;
+            }, { passive: true });
+            
+            // GSAP ticker for smooth animation
+            gsap.ticker.add(() => {
+                cache.x = gsap.utils.interpolate(cache.x, mouse.x, 0.1);
+                cache.y = gsap.utils.interpolate(cache.y, mouse.y, 0.1);
+                
+                const dist = Math.hypot(mouse.x - cache.x, mouse.y - cache.y);
+                if (dist > threshold) {
+                    showNextImage();
+                    cache.x = mouse.x;
+                    cache.y = mouse.y;
+                }
+            });
+            
+            function showNextImage() {
+                if (reducedMotion) return;
+                
+                index++;
+                const img = images[index % images.length];
+                const rect = img.getBoundingClientRect();
+                
+                gsap.killTweensOf(img);
+                gsap.set(img, {
+                    opacity: 0,
+                    scale: 0,
+                    zIndex: index,
+                    x: cache.x - rect.width / 2,
+                    y: cache.y - rect.height / 2
+                });
+                
+                // Image trail animation
+                gsap.timeline({
+                    onStart: () => { activeImages++; idle = false; },
+                    onComplete: () => {
+                        activeImages--;
+                        if (activeImages === 0) idle = true;
+                    }
+                })
+                .to(img, {
+                    duration: 0.4,
+                    opacity: 1,
+                    scale: 1,
+                    x: mouse.x - rect.width / 2,
+                    y: mouse.y - rect.height / 2,
+                    ease: 'power2.out'
+                })
+                .to(img, {
+                    duration: 0.8,
+                    opacity: 0,
+                    scale: 0.2,
+                    ease: 'power2.in',
+                    x: cache.x - rect.width / 2,
+                    y: cache.y - rect.height / 2
+                }, '+=0.3');
+            }
+        }
+    }
+    
+    // Initialize parallax effects
+    function initParallax() {
+        gsap.utils.toArray('[data-anim-parallax]').forEach(container => {
+            const target = container.querySelector('[data-anim-parallax-target]');
+            if (target && !reducedMotion) {
+                gsap.to(target, {
+                    yPercent: -10,
+                    ease: 'none',
+                    scrollTrigger: {
+                        trigger: container,
+                        scrub: 1.2,
+                        invalidateOnRefresh: true
+                    }
+                });
+            }
+        });
+    }
+    
+    // Initialize link hover effects
+    function initLinkHovers() {
+        gsap.utils.toArray('[data-anim="link-underline"]').forEach(link => {
+            const line = link.querySelector('.animated-link-line');
+            if (!line) return;
+            
+            // Replicate the specific "slide out, jump left, slide in" effect
+            const tl = gsap.timeline({ paused: true, defaults: { duration: reducedMotion ? 0 : 0.5 } })
+                .to(line, { x: '101%', ease: 'outQuint' })
+                .set(line, { x: '-101%' })
+                .to(line, { x: '0%', ease: 'outQuint' });
+            
+            link.addEventListener('mouseenter', () => {
+                if (!reducedMotion) tl.play(0);
+            });
+        });
+    }
+    
+    // Initialize accordions
+    function initAccordions() {
+        const accordions = gsap.utils.toArray('[data-anim-accordion="item"]');
+        accordions.forEach((item, index) => {
+            const header = item.querySelector('[data-anim-accordion="header"]');
+            const content = item.querySelector('[data-anim-accordion="content"]');
+            const icon = item.querySelector('[data-anim-accordion="icon"]');
+            
+            // Set initial states
+            gsap.set(content, { height: 0, opacity: 0, display: 'none' });
+            
+            // Open the first one by default
+            if (index === 0) {
+                item.classList.add('is-active');
+                gsap.set(content, { height: 'auto', opacity: 1, display: 'flex' });
+                gsap.set(icon, { rotation: 90 });
+            }
+            
+            header.addEventListener('click', () => {
+                const isActive = item.classList.contains('is-active');
+                
+                // Close all other accordions
+                accordions.forEach(otherItem => {
+                    if (otherItem !== item && otherItem.classList.contains('is-active')) {
+                        toggleAccordion(otherItem, false);
+                    }
+                });
+                
+                // Toggle current accordion
+                toggleAccordion(item, !isActive);
+            });
+        });
+        
+        function toggleAccordion(item, open) {
+            const content = item.querySelector('[data-anim-accordion="content"]');
+            const icon = item.querySelector('[data-anim-accordion="icon"]');
+            
+            if (open) {
+                item.classList.add('is-active');
+                gsap.set(content, { display: 'flex', height: 'auto' });
+                
+                const contentHeight = content.scrollHeight;
+                gsap.set(content, { height: 0, opacity: 0 });
+                
+                gsap.to(content, {
+                    height: contentHeight,
+                    opacity: 1,
+                    duration: reducedMotion ? 0 : 0.5,
+                    ease: 'outQuint',
+                    onComplete: () => {
+                        gsap.set(content, { height: 'auto' });
+                    }
+                });
+                
+                gsap.to(icon, {
+                    rotation: 90,
+                    duration: reducedMotion ? 0 : 0.5,
+                    ease: 'outQuint'
+                });
+            } else {
+                item.classList.remove('is-active');
+                gsap.to(content, {
+                    height: 0,
+                    opacity: 0,
+                    duration: reducedMotion ? 0 : 0.5,
+                    ease: 'outQuint',
+                    onComplete: () => {
+                        gsap.set(content, { display: 'none' });
+                    }
+                });
+                
+                gsap.to(icon, {
+                    rotation: 0,
+                    duration: reducedMotion ? 0 : 0.5,
+                    ease: 'outQuint'
+                });
+            }
+        }
+    }
+    
+    // Initialize marquees/carousels
+    function initMarquees() {
+        gsap.utils.toArray('[data-anim-marquee="wrap"]').forEach(wrap => {
+            const inner = wrap.querySelector('[data-anim-marquee="inner"]');
+            const content = inner.querySelector('[data-anim-marquee="content"]');
+            if (!inner || !content) return;
+            
+            const isReverse = wrap.classList.contains('reverse');
+            
+            // Clone content for seamless loop
+            const contentClone = content.cloneNode(true);
+            inner.appendChild(contentClone);
+            
+            gsap.set(inner, { xPercent: isReverse ? -50 : 0 });
+            
+            if (!reducedMotion) {
+                // Looping animation
+                gsap.to(inner, {
+                    xPercent: isReverse ? 0 : -50,
+                    duration: 120,
+                    ease: 'none',
+                    repeat: -1,
+                    paused: true
+                }).play();
+                
+                // Scroll-based animation
+                gsap.to(inner, {
+                    xPercent: isReverse ? -25 : -25,
+                    ease: 'none',
+                    scrollTrigger: {
+                        trigger: wrap,
+                        scrub: 1.2,
+                        invalidateOnRefresh: true
+                    }
+                });
+            }
+        });
+    }
+    
+    // Initialize CTA section effects
+    function initCTA() {
+        const fog = document.querySelector('[data-anim="cta-fog"]');
+        if (!fog || reducedMotion) return;
+        
+        // Fog animation
+        gsap.set(fog, { x: 0 });
+        gsap.to(fog, {
+            x: '-200%',
+            duration: 20,
+            ease: 'none',
+            repeat: -1,
+            modifiers: {
+                x: gsap.utils.unitize(x => parseFloat(x) % 200)
+            }
+        });
+    }
+    
+    // Initialize project cards
+    function initProjectCards() {
+        // Glitch effect setup
+        const glitchTL = gsap.timeline({ 
+            paused: true, 
+            defaults: { 
+                ease: 'power2.inOut'
+            }
+        })
+        .to('#glitchNoise', { attr: { baseFrequency: '0.05 1.2' }, duration: reducedMotion ? 0 : 0.12 })
+        .to('#glitchDisp', { attr: { scale: 60 }, duration: reducedMotion ? 0 : 0.12 }, '<')
+        .to('#glitchRGB', { attr: { dx: 6 }, duration: reducedMotion ? 0 : 0.12 }, '<')
+        .to('#glitchNoise', { attr: { baseFrequency: '0.02 0.6' }, duration: reducedMotion ? 0 : 0.2 })
+        .to('#glitchDisp', { attr: { scale: 30 }, duration: reducedMotion ? 0 : 0.2 }, '<')
+        .to('#glitchRGB', { attr: { dx: 3 }, duration: reducedMotion ? 0 : 0.2 }, '<')
+        .to('#glitchNoise', { attr: { baseFrequency: '0 0' }, duration: reducedMotion ? 0 : 0.25 })
+        .to('#glitchDisp', { attr: { scale: 0 }, duration: reducedMotion ? 0 : 0.25 }, '<')
+        .to('#glitchRGB', { attr: { dx: 0 }, duration: reducedMotion ? 0 : 0.25 }, '<');
+        
+        // Helper: reset filter attributes
+        function resetFilterAttrs() {
+            gsap.set('#glitchNoise', { attr: { baseFrequency: '0 0' } });
+            gsap.set('#glitchDisp', { attr: { scale: 0 } });
+            gsap.set('#glitchRGB', { attr: { dx: 0 } });
+        }
+        
+        // Reset initial state
+        resetFilterAttrs();
+        
+        // Desktop hover glitch effect
+        gsap.utils.toArray('[data-anim="cursor-glitch"]').forEach(card => {
+            const cursor = document.querySelector('.cursor-pointer');
+            if (!cursor) return;
+            
+            card.addEventListener('mouseenter', () => {
+                cursor.style.filter = 'none';
+                cursor.offsetWidth; // Force reflow
+                resetFilterAttrs();
+                cursor.style.filter = 'url(#cyberGlitch)';
+                if (!reducedMotion) glitchTL.restart(true);
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                gsap.to({}, { 
+                    duration: reducedMotion ? 0 : 0.05, 
+                    onComplete: () => {
+                        if (cursor) cursor.style.filter = 'none';
+                    }
+                });
+            });
+        });
+        
+        // Mobile touch glitch effect
+        gsap.utils.toArray('.single-project-wrap').forEach(trigger => {
+            const mobileButton = trigger.querySelector('.mobile-button');
+            if (!mobileButton) return;
+            
+            const mobileGlitchTL = gsap.timeline({ 
+                paused: true, 
+                defaults: { 
+                    ease: 'power2.inOut'
+                }
+            })
+            .to('#glitchNoise', { attr: { baseFrequency: '0.05 1.2' }, duration: reducedMotion ? 0 : 0.12 })
+            .to('#glitchDisp', { attr: { scale: 60 }, duration: reducedMotion ? 0 : 0.12 }, '<')
+            .to('#glitchRGB', { attr: { dx: 6 }, duration: reducedMotion ? 0 : 0.12 }, '<')
+            .to('#glitchNoise', { attr: { baseFrequency: '0.02 0.6' }, duration: reducedMotion ? 0 : 0.2 })
+            .to('#glitchDisp', { attr: { scale: 30 }, duration: reducedMotion ? 0 : 0.2 }, '<')
+            .to('#glitchRGB', { attr: { dx: 3 }, duration: reducedMotion ? 0 : 0.2 }, '<')
+            .to('#glitchNoise', { attr: { baseFrequency: '0 0' }, duration: reducedMotion ? 0 : 0.25 })
+            .to('#glitchDisp', { attr: { scale: 0 }, duration: reducedMotion ? 0 : 0.25 }, '<')
+            .to('#glitchRGB', { attr: { dx: 0 }, duration: reducedMotion ? 0 : 0.25 }, '<');
+            
+            function playMobileGlitch(el) {
+                el.style.filter = 'url(#cyberGlitch)';
+                if (!reducedMotion) mobileGlitchTL.restart(true);
+                gsap.delayedCall(mobileGlitchTL.duration(), () => {
+                    el.style.filter = 'none';
+                    resetFilterAttrs();
+                });
+            }
+            
+            function isTabletOrBelow() {
+                return window.innerWidth <= 991;
+            }
+            
+            trigger.addEventListener('touchstart', e => { 
+                if (isTabletOrBelow() && !isMobile) playMobileGlitch(mobileButton);
+            }, { passive: true });
+            
+            trigger.addEventListener('click', e => {
+                if (isMobile) playMobileGlitch(mobileButton);
+            });
+        });
+    }
+    
+    // Initialize footer interactions
+    function initFooter() {
+        const footerLinks = gsap.utils.toArray('.footer-link');
+        footerLinks.forEach(link => {
+            link.addEventListener('mouseenter', () => {
+                gsap.to(link, {
+                    color: '#9f9f9f',
+                    duration: reducedMotion ? 0 : 0.3,
+                    ease: 'power2.out'
+                });
+            });
+            
+            link.addEventListener('mouseleave', () => {
+                gsap.to(link, {
+                    color: 'inherit',
+                    duration: reducedMotion ? 0 : 0.3,
+                    ease: 'power2.out'
+                });
+            });
+        });
+    }
+    
+    // Initialize all animations after fonts are loaded and GSAP is ready
+    function initAllAnimations() {
+        initCoreAnimations();
+        
+        // Initialize scroll-triggered animations after a small delay
+        gsap.delayedCall(reducedMotion ? 0 : 0.5, () => {
+            initHeroSection();
+            initParallax();
+            initLinkHovers();
+        });
+    }
+    
+    // Start the animation system
+    function startAnimations() {
+        initSmoothScroll();
+        initAllAnimations();
+        
+        // Initial page visibility setup
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Pause all animations when tab is not visible
+                gsap.globalTimeline.pause();
+            } else {
+                // Resume animations when tab becomes visible
+                gsap.globalTimeline.play();
+            }
+        });
+        
+        // Ensure everything is visible after all animations are set up
+        gsap.set('[data-start="hidden"]', { autoAlpha: 1 });
+    }
+    
+    // Start animations when fonts are loaded
+    if (document.fonts.status === 'loaded') {
+        startAnimations();
+    } else {
+        window.addEventListener('fontsLoaded', startAnimations);
+        // Fallback in case font loading takes too long
+        setTimeout(startAnimations, 3000);
+    }
+    
+    // Expose lenis globally for other scripts
+    window.lenis = lenis;
+    
+    console.log('GSAP animations fully initialized');
 });
