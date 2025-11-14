@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
     requestAnimationFrame(handleScroll);
     
     // Initialize Lenis smooth scrolling with performance optimizations
-    function initScroll() {
+    function initSmoothScroll() {
         lenis = new Lenis({
             lerp: reducedMotion ? 0.1 : 0.1,
             smoothWheel: true,
@@ -337,11 +337,26 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Hero text entrance animation
+        // Hero text entrance animation - responsive positioning
+        const isTablet = window.innerWidth <= 991 && window.innerWidth > 767;
+        const isMobile = window.innerWidth <= 767;
+        
+        let initialX, initialY;
+        if (isMobile) {
+            initialX = '0vw';
+            initialY = '0vw';
+        } else if (isTablet) {
+            initialX = '31vw';
+            initialY = '16vw';
+        } else {
+            initialX = '30vw';
+            initialY = '30vh';
+        }
+        
         gsap.set('[data-anim-load="hero-title"]', {
             scale: 2,
-            x: '30vw',
-            y: '30vh'
+            x: initialX,
+            y: initialY
         });
         
         const loadTl = gsap.timeline({ 
@@ -782,7 +797,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Start the animation system
     function startAnimations() {
-        initScroll();
+        initSmoothScroll();
         initAllAnimations();
         
         // Initial page visibility setup
@@ -804,6 +819,10 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Required data attributes check:');
             console.log('- data-anim-nav:', document.querySelectorAll('[data-anim-nav]').length);
             console.log('- data-anim="cursor-grow":', document.querySelectorAll('[data-anim="cursor-grow"]').length);
+            console.log('- data-anim="cursor-invert":', document.querySelectorAll('[data-anim="cursor-invert"]').length);
+            console.log('- data-anim="link-underline":', document.querySelectorAll('[data-anim="link-underline"]').length);
+            console.log('- data-anim="image-trail-wrap":', document.querySelectorAll('[data-anim="image-trail-wrap"]').length);
+            console.log('- data-anim="cta-fog":', document.querySelectorAll('[data-anim="cta-fog"]').length);
             console.log('- data-anim-load:', document.querySelectorAll('[data-anim-load]').length);
             console.log('- data-anim-parallax:', document.querySelectorAll('[data-anim-parallax]').length);
             console.log('- data-anim-accordion:', document.querySelectorAll('[data-anim-accordion]').length);
